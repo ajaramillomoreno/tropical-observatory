@@ -2,6 +2,8 @@ name: Publish IMERG Observations
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '30 12 * * *'
 
 permissions:
   contents: read
