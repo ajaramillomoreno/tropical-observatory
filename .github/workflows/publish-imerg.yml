@@ -1,9 +1,9 @@
-name: Publish IMERG Observations
+name: Publish Tropical Observatory (IMERG and GFS)
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: '30 12 * * *'
+    - cron: '30 12 * * *'  # Daily, 12:30 UTC (06:30 Mexico City)
 
 permissions:
   contents: read
@@ -17,8 +17,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     steps:
-      - name: Check out scientific code
+      - name: Check out source code
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -29,11 +30,12 @@ jobs:
       - name: Install scientific dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install earthaccess h5py numpy matplotlib cartopy pillow
+          python -m pip install earthaccess h5py numpy matplotlib cartopy pillow requests eccodes
+          python -m eccodes selfcheck
 
-      - name: Prepare website directory
+      - name: Prepare website files
         run: |
-          mkdir -p site/precipitation
+          mkdir -p site/precipitation site/forecast_tropical
           cp -R docs/. site/
 
       - name: Generate latest IMERG observations
@@ -44,10 +46,35 @@ jobs:
         run: |
           python scripts/generate_tropical_precipitation.py --output-dir site/precipitation
 
+      - name: Generate latest GFS tropical forecast
+        run: |
+          python scripts/generate_gfs_tropical_forecast.py --output-dir site/forecast_tropical
+
+      - name: Verify that all images and metadata exist
+        run: |
+          python - <<'PYCODE'
+          import json
+          from pathlib import Path
+          site = Path('site')
+          imerg = json.loads((site / 'precipitation/tropical_precip_24h_latest.json').read_text())
+          for name in imerg['figures']:
+              path = site / 'precipitation' / name
+              assert path.is_file() and path.stat().st_size > 0, path
+          gfs = json.loads((site / 'forecast_tropical/gfs_tropical_precip_forecast_latest.json').read_text())
+          count = 0
+          for region in gfs['regions']:
+              for frame in region['frames']:
+                  path = site / 'forecast_tropical' / frame['image']
+                  assert path.is_file() and path.stat().st_size > 0, path
+                  count += 1
+          assert count == 32, f'Expected 32 GFS images; got {count}'
+          print('Verified:', len(imerg['figures']), 'IMERG maps and', count, 'GFS frames')
+          PYCODE
+
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload website for deployment
+      - name: Upload website artifact
         uses: actions/upload-pages-artifact@v4
         with:
           path: site

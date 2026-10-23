@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Tropical Weather & Climate Observatory: satellite-based tropical precipitation observations and scientific exploration.">
+  <meta name="description" content="Tropical Weather & Climate Observatory: tropical precipitation observations, GFS forecasts, and scientific exploration.">
   <title>Tropical Weather &amp; Climate Observatory</title>
   <style>
     :root {
@@ -61,6 +61,13 @@
                            background: white; color: var(--text);
                            font: inherit; cursor: pointer; }
     .map-selector select:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+    .forecast-controls { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin:0 0 15px; }
+    .forecast-controls button { background:var(--blue); color:white; border:0; padding:9px 16px;
+      border-radius:4px; font-size:14px; cursor:pointer; }
+    .forecast-controls button:disabled { opacity:.45; cursor:default; }
+    .forecast-controls button:focus-visible { outline: 3px solid #69c2f2; }
+    .forecast-controls input[type="range"] { flex:1; min-width:180px; accent-color:var(--blue); }
+    .forecast-time { margin:8px 0 16px; color:var(--navy); font-weight:bold; font-size:14px; }
     .product-note { margin-top: 18px; color: var(--muted); font-size: 13px; }
     .resource-link { margin-top: 16px; font-size: 14px; }
     .resource-link a { margin-right: 12px; }
@@ -102,13 +109,14 @@
     <div class="container">
       <a href="#home">HOME</a>
       <a href="#products">OBSERVATIONAL PRODUCTS</a>
+      <a href="#forecast">GFS FORECAST</a>
       <a href="#about">ABOUT</a>
       <a href="#resources">DATA &amp; RESOURCES</a>
     </div>
   </nav>
 
   <main class="container">
-    <div class="breadcrumb">Home / Observational Products</div>
+    <div class="breadcrumb">Home / Observations and Forecasts</div>
 
     <section class="intro">
       <h2 class="section-title">Welcome to the Tropical Weather &amp; Climate Observatory</h2>
@@ -163,6 +171,54 @@
             <a href="https://doi.org/10.5067/GPM/IMERG/3B-HH-E/07"
                target="_blank" rel="noopener noreferrer">NASA IMERG data source</a>
             <a href="https://github.com/ajaramillomoreno/tropical-observatory/blob/main/scripts/generate_tropical_precipitation.py"
+               target="_blank" rel="noopener noreferrer">Processing script</a>
+          </p>
+        </div>
+      </article>
+
+      <h2 class="section-title">Forecast Products</h2>
+      <article class="product" id="forecast">
+        <div class="product-header">
+          <h3>GFS Tropical Precipitation Forecast</h3>
+          <p>NOAA/NCEP GFS 0.25° | Independent 6-hour precipitation accumulations | +0 to +48 hours</p>
+        </div>
+        <div class="product-body">
+          <div class="map-selector">
+            <label for="gfs-region">Select region:</label>
+            <select id="gfs-region" aria-controls="gfs-map">
+              <option value="global_tropics">Global Tropics</option>
+              <option value="americas">Americas</option>
+              <option value="mexico">Mexico</option>
+              <option value="colombia">Colombia</option>
+            </select>
+          </div>
+          <div class="forecast-controls">
+            <button id="gfs-play" type="button" aria-label="Play or pause forecast">Play</button>
+            <button id="gfs-prev" type="button" aria-label="Previous forecast interval">Previous</button>
+            <button id="gfs-next" type="button" aria-label="Next forecast interval">Next</button>
+            <label for="gfs-slider">Forecast step:</label>
+            <input id="gfs-slider" type="range" min="0" max="7" value="0" step="1"
+                   aria-label="Forecast interval" aria-controls="gfs-map">
+            <span id="gfs-step">+0 to +6 h</span>
+          </div>
+          <p id="gfs-cycle" class="product-note">Loading GFS forecast metadata…</p>
+          <p id="gfs-valid" class="forecast-time" aria-live="polite"></p>
+          <img id="gfs-map" class="product-map"
+               alt="Six-hour GFS precipitation forecast for the global tropics"
+               decoding="async" loading="lazy">
+          <p id="gfs-error" class="product-note" role="status" hidden>
+            The forecast map could not be loaded. Please try another interval or refresh the page.
+          </p>
+          <p class="product-note">
+            Each frame shows precipitation accumulated over its own six-hour period,
+            not the total accumulated since model initialization. GFS values are model forecasts,
+            not satellite observations.
+          </p>
+          <p class="resource-link">
+            <a id="gfs-image-link" href="#forecast" target="_blank" rel="noopener noreferrer">Open selected forecast map</a>
+            <a href="forecast_tropical/gfs_tropical_precip_forecast_latest.json"
+               target="_blank" rel="noopener noreferrer">Latest GFS metadata (JSON)</a>
+            <a href="https://github.com/ajaramillomoreno/tropical-observatory/blob/main/scripts/generate_gfs_tropical_forecast.py"
                target="_blank" rel="noopener noreferrer">Processing script</a>
           </p>
         </div>
@@ -251,6 +307,110 @@
       .catch(() => {
         period.textContent = "Observation period: see the UTC timestamps printed on the map.";
       });
+  </script>
+  <script>
+    // Read the forecast manifest produced by the Python script. No hardcoded dates.
+    (() => {
+      const root = "forecast_tropical/";
+      const region = document.getElementById("gfs-region");
+      const map = document.getElementById("gfs-map");
+      const error = document.getElementById("gfs-error");
+      const cycleLabel = document.getElementById("gfs-cycle");
+      const validLabel = document.getElementById("gfs-valid");
+      const stepLabel = document.getElementById("gfs-step");
+      const slider = document.getElementById("gfs-slider");
+      const playButton = document.getElementById("gfs-play");
+      const previous = document.getElementById("gfs-prev");
+      const next = document.getElementById("gfs-next");
+      const imageLink = document.getElementById("gfs-image-link");
+      let manifest = null;
+      let frameIndex = 0;
+      let timer = null;
+      let regionFrames = [];
+      let version = Date.now();
+      const format = new Intl.DateTimeFormat("en-GB", {
+        day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit",
+        hourCycle:"h23", timeZone:"UTC"
+      });
+
+      function pause() {
+        if (timer !== null) window.clearInterval(timer);
+        timer = null;
+        playButton.textContent = "Play";
+      }
+
+      function showFrame() {
+        const frame = regionFrames[frameIndex];
+        if (!frame) return;
+        error.hidden = true;
+        slider.value = String(frameIndex);
+        stepLabel.textContent = "+" + frame.interval_start_hour + " to +" +
+          frame.interval_end_hour + " h";
+        validLabel.textContent = "Valid: " + format.format(new Date(frame.start_utc)) +
+          " – " + format.format(new Date(frame.end_utc)) + " UTC";
+        const source = root + frame.image + "?v=" + version;
+        map.alt = "GFS precipitation, " + region.options[region.selectedIndex].text +
+          ", forecast hours " + frame.interval_start_hour + "–" + frame.interval_end_hour;
+        map.src = source;
+        imageLink.href = root + frame.image;
+      }
+
+      function selectRegion() {
+        if (!manifest) return;
+        const selection = manifest.regions.find(item => item.key === region.value);
+        if (!selection) return;
+        regionFrames = selection.frames;
+        frameIndex = Math.min(frameIndex, regionFrames.length - 1);
+        slider.max = String(regionFrames.length - 1);
+        showFrame();
+      }
+
+      function advance(delta) {
+        if (!regionFrames.length) return;
+        frameIndex = (frameIndex + delta + regionFrames.length) % regionFrames.length;
+        showFrame();
+      }
+
+      region.addEventListener("change", selectRegion);
+      slider.addEventListener("input", () => {
+        pause();
+        frameIndex = Number(slider.value);
+        showFrame();
+      });
+      previous.addEventListener("click", () => { pause(); advance(-1); });
+      next.addEventListener("click", () => { pause(); advance(1); });
+      playButton.addEventListener("click", () => {
+        if (!manifest) return;
+        if (timer !== null) { pause(); return; }
+        playButton.textContent = "Pause";
+        timer = window.setInterval(() => advance(1), 1100);
+      });
+      map.addEventListener("error", () => { error.hidden = false; pause(); });
+      map.addEventListener("load", () => { error.hidden = true; });
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) pause();
+      });
+
+      fetch(root + "gfs_tropical_precip_forecast_latest.json?v=" + version,
+            { cache:"no-store" })
+        .then(response => {
+          if (!response.ok) throw new Error("GFS forecast metadata unavailable");
+          return response.json();
+        })
+        .then(data => {
+          if (!Array.isArray(data.regions) || !data.regions.length) {
+            throw new Error("Invalid forecast manifest");
+          }
+          manifest = data;
+          cycleLabel.textContent = "GFS initialized: " +
+            format.format(new Date(manifest.gfs_cycle_utc)) + " UTC";
+          selectRegion();
+        })
+        .catch(() => {
+          cycleLabel.textContent = "GFS metadata unavailable. Please try again later.";
+          error.hidden = false;
+        });
+    })();
   </script>
 </body>
 </html>
