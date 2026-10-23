@@ -3,7 +3,7 @@ name: Publish Tropical Observatory (IMERG and GFS)
 on:
   workflow_dispatch:
   schedule:
-    - cron: '30 12 * * *'  # Daily, 12:30 UTC (06:30 Mexico City)
+    - cron: '30 3,9,15,21 * * *'
 
 permissions:
   contents: read
