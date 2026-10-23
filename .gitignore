@@ -171,6 +171,8 @@ logs/
 backup/
 backups/
 
+# Experimental products and local tests
+sandbox/
 
 # =============================================================================
 # 11. IMPORTANT: FILES WE WANT TO KEEP
