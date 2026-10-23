@@ -1,48 +1,256 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Tropical Weather & Climate Observatory — IMERG</title>
+  <meta name="description" content="Tropical Weather & Climate Observatory: satellite-based tropical precipitation observations and scientific exploration.">
+  <title>Tropical Weather &amp; Climate Observatory</title>
   <style>
-    :root { color-scheme: light; font-family: system-ui, -apple-system, sans-serif; color: #192c3c; background: #f7f9fb; }
-    body { margin: 0; }
-    header { background: #143753; color: white; padding: 2.1rem max(4%, calc((100% - 1150px)/2)); }
-    header h1 { font-size: clamp(1.5rem, 3vw, 2.25rem); margin: 0 0 .5rem; }
-    header p { color: #d1e0eb; margin: 0; }
-    main { max-width: 1150px; margin: 2rem auto; padding: 0 4%; }
-    .intro { margin-bottom: 1.6rem; color: #465b69; }
-    .maps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 480px), 1fr)); gap: 1.5rem; }
-    figure { margin: 0; background: white; border: 1px solid #dce4ea; border-radius: 12px; overflow: hidden; }
-    img { display: block; width: 100%; height: auto; }
-    figcaption { padding: .85rem 1rem; font-weight: 650; }
-    footer { max-width: 1150px; margin: 2rem auto; padding: 0 4% 2rem; color: #5d6a76; font-size: .9rem; }
+    :root {
+      --navy: #103655;
+      --navy-dark: #08283f;
+      --blue: #18557e;
+      --border: #d8e2ea;
+      --text: #263746;
+      --muted: #5b6e7d;
+      --background: #f3f6f9;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: var(--background); color: var(--text);
+           font-family: Arial, Helvetica, sans-serif; line-height: 1.6; }
+    a { color: #14608f; }
+    a:hover { text-decoration: underline; }
+    .container { max-width: 1250px; margin: 0 auto; padding: 0 24px; }
+
+    /* Header and navigation: adapted from the original observatory website */
+    .masthead { background: var(--navy); color: white; padding: 22px 0; }
+    .brand { display: flex; align-items: center; gap: 28px; }
+    .brand img { display: block; width: 145px; height: 145px;
+                 object-fit: contain; flex-shrink: 0; }
+    .brand h1 { margin: 0; font-size: clamp(24px, 3vw, 36px);
+                font-weight: 700; line-height: 1.2; letter-spacing: -0.5px; }
+    .brand p { margin: 12px 0 0; color: #c8dfef; font-size: 13px;
+               letter-spacing: 0.5px; text-transform: uppercase; }
+    nav { background: var(--blue); border-bottom: 3px solid #d2e1eb; }
+    nav .container { display: flex; flex-wrap: wrap; }
+    nav a { display: inline-block; padding: 14px 20px; color: white;
+            font-size: 12px; font-weight: bold; letter-spacing: 0.5px;
+            text-decoration: none; }
+    nav a:hover, nav a:focus-visible { background: #103e61; }
+
+    /* Main content */
+    main { padding-top: 32px !important; padding-bottom: 48px !important; }
+    .breadcrumb { margin-bottom: 20px; color: var(--muted); font-size: 12px; }
+    .section-title { margin-top: 0; padding-bottom: 10px;
+                     border-bottom: 2px solid #b5cedf; color: var(--navy); }
+    .intro { margin-bottom: 30px; padding: 24px 28px; background: white;
+             border: 1px solid var(--border); border-left: 4px solid var(--blue); }
+    .intro p { margin-bottom: 0; }
+    .product { margin-bottom: 30px; background: white; border: 1px solid var(--border); }
+    .product-header { padding: 20px 26px; border-bottom: 1px solid var(--border); }
+    .product-header h3 { margin: 0 0 7px; color: var(--navy); font-size: 23px; }
+    .product-header p { margin: 0; color: var(--muted); font-size: 14px; }
+    .product-body { padding: 22px; }
+    .product-map { display: block; width: 100%; height: auto; background: #edf3f7; }
+    .map-selector { display: flex; align-items: center; flex-wrap: wrap;
+                    gap: 12px; margin-bottom: 20px; }
+    .map-selector label { font-size: 14px; font-weight: bold; color: var(--navy); }
+    .map-selector select { padding: 10px 14px; min-width: 210px;
+                           border: 1px solid var(--border); border-radius: 4px;
+                           background: white; color: var(--text);
+                           font: inherit; cursor: pointer; }
+    .map-selector select:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+    .product-note { margin-top: 18px; color: var(--muted); font-size: 13px; }
+    .resource-link { margin-top: 16px; font-size: 14px; }
+    .resource-link a { margin-right: 12px; }
+    .about { padding: 26px 28px; background: white; border: 1px solid var(--border); }
+    .about h2 { margin-top: 0; color: var(--navy); }
+    .about p { margin: 10px 0; }
+    .disclaimer { margin-top: 26px; padding: 18px 22px; background: #f1f5f8;
+                  border-left: 3px solid #9aafbf; color: #526575; font-size: 13px; }
+    footer { padding: 28px 0; background: var(--navy-dark);
+             color: #d4e1eb; font-size: 13px; }
+    footer a { color: #d4e9fa; }
+    footer p { margin: 7px 0; }
+    [hidden] { display: none !important; }
+    @media (max-width: 700px) {
+      .brand { gap: 16px; }
+      .brand img { width: 85px; height: 85px; }
+      .brand h1 { font-size: 22px; }
+      .brand p { font-size: 10px; line-height: 1.5; }
+      nav a { padding: 12px; font-size: 11px; }
+      .intro, .about { padding: 18px; }
+      .product-header { padding: 18px; }
+      .product-body { padding: 12px; }
+    }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Tropical Weather &amp; Climate Observatory</h1>
-    <p>Observed precipitation · NASA GPM IMERG Early Run</p>
+  <header class="masthead" id="home">
+    <div class="container brand">
+      <img src="assets/tropical_observatory_logo_transparent.png"
+           alt="Tropical Weather and Climate Observatory emblem">
+      <div>
+        <h1>Tropical Weather &amp; Climate Observatory</h1>
+        <p>Weather | Climate | Atmospheric Dynamics | Scientific Exploration</p>
+      </div>
+    </div>
   </header>
-  <main>
-    <p class="intro">Latest complete 24-hour precipitation accumulation. <span id="period">Loading observation period…</span></p>
-    <section class="maps">
-      <figure><img src="precipitation/tropical_precip_24h_latest.webp" alt="Global tropical precipitation" loading="eager"><figcaption>Global tropics</figcaption></figure>
-      <figure><img src="precipitation/americas_precip_24h_latest.webp" alt="Precipitation in the Americas" loading="lazy"><figcaption>Americas</figcaption></figure>
-      <figure><img src="precipitation/mexico_precip_24h_latest.webp" alt="Precipitation in Mexico" loading="lazy"><figcaption>Mexico</figcaption></figure>
-      <figure><img src="precipitation/colombia_precip_24h_latest.webp" alt="Precipitation in Colombia" loading="lazy"><figcaption>Colombia</figcaption></figure>
+
+  <nav aria-label="Main navigation">
+    <div class="container">
+      <a href="#home">HOME</a>
+      <a href="#products">OBSERVATIONAL PRODUCTS</a>
+      <a href="#about">ABOUT</a>
+      <a href="#resources">DATA &amp; RESOURCES</a>
+    </div>
+  </nav>
+
+  <main class="container">
+    <div class="breadcrumb">Home / Observational Products</div>
+
+    <section class="intro">
+      <h2 class="section-title">Welcome to the Tropical Weather &amp; Climate Observatory</h2>
+      <p>The Tropical Weather &amp; Climate Observatory is a personal scientific project
+         born out of curiosity, a love of atmospheric science, and a fascination with
+         the tropics. It is a place to explore weather and climate, experiment with
+         observational data, write code, learn new things, and simply enjoy the science.
+         The observatory brings together maps and other scientific products that I
+         develop along the way, sharing some of the beauty, complexity, and surprises
+         of the tropical atmosphere.</p>
+    </section>
+
+    <section id="products">
+      <h2 class="section-title">Observational Products</h2>
+      <article class="product" id="precipitation">
+        <div class="product-header">
+          <h3>Global Tropical Precipitation</h3>
+          <p>NASA GPM IMERG Early Run | 24-hour accumulated precipitation | 35°S–35°N</p>
+        </div>
+        <div class="product-body">
+          <div class="map-selector">
+            <label for="precipitation-region">Select region:</label>
+            <select id="precipitation-region" aria-controls="precipitation-map">
+              <option value="tropical">Global Tropics</option>
+              <option value="americas">Americas</option>
+              <option value="mexico">Mexico</option>
+              <option value="colombia">Colombia</option>
+            </select>
+          </div>
+
+          <img id="precipitation-map" class="product-map"
+               alt="24-hour satellite precipitation accumulation in the global tropics"
+               decoding="async">
+
+          <p id="map-error" class="product-note" role="status" hidden>
+            The precipitation map could not be loaded. Please try another region or refresh the page.
+          </p>
+          <p id="observation-period" class="product-note" aria-live="polite">
+            Loading the latest observation period…
+          </p>
+          <p class="product-note">
+            Data source: NASA Global Precipitation Measurement (GPM), IMERG Early Run.
+            Satellite-estimated precipitation accumulated over 24 hours from 48
+            consecutive half-hourly observations. This product is intended for
+            scientific exploration and is not a ground-based rain-gauge measurement.
+          </p>
+          <p class="resource-link" id="resources">
+            <a id="image-link" href="precipitation/tropical_precip_24h_latest.webp"
+               target="_blank" rel="noopener noreferrer">Open selected map</a>
+            <a href="precipitation/tropical_precip_24h_latest.json"
+               target="_blank" rel="noopener noreferrer">Latest metadata (JSON)</a>
+            <a href="https://doi.org/10.5067/GPM/IMERG/3B-HH-E/07"
+               target="_blank" rel="noopener noreferrer">NASA IMERG data source</a>
+            <a href="https://github.com/ajaramillomoreno/tropical-observatory/blob/main/scripts/generate_tropical_precipitation.py"
+               target="_blank" rel="noopener noreferrer">Processing script</a>
+          </p>
+        </div>
+      </article>
+    </section>
+
+    <section class="about" id="about">
+      <h2>About the Observatory</h2>
+      <p><strong>Scientific development and coordination</strong></p>
+      <p><strong>Alejandro Jaramillo Moreno</strong><br>
+         Departamento de Cambio Climático<br>
+         Instituto de Ciencias de la Atmósfera y Cambio Climático<br>
+         Universidad Nacional Autónoma de México (UNAM)<br>
+         Mexico City, Mexico</p>
+      <p>Email: <a href="mailto:ajaramillo@atmosfera.unam.mx">ajaramillo@atmosfera.unam.mx</a></p>
+      <p>Website: <a href="https://ajaramillomoreno.github.io"
+                     target="_blank" rel="noopener noreferrer">ajaramillomoreno.github.io</a></p>
+      <div class="disclaimer">
+        <strong>Disclaimer</strong>
+        <p>The Tropical Weather &amp; Climate Observatory is a personal scientific
+           initiative, not an official operational service. The information is
+           provided for educational, exploratory, and research purposes only;
+           accuracy and suitability for particular decisions are not guaranteed.</p>
+      </div>
     </section>
   </main>
-  <footer>Source: NASA GPM IMERG Early Run · 24-hour accumulation · Images: lossless WebP</footer>
+
+  <footer>
+    <div class="container">
+      <strong>Tropical Weather &amp; Climate Observatory</strong>
+      <p>Curiosity | Open Science | Tropical Atmosphere</p>
+      <p>A personal scientific project by
+        <a href="https://ajaramillomoreno.github.io">Alejandro Jaramillo Moreno</a></p>
+    </div>
+  </footer>
+
   <script>
-    fetch('precipitation/tropical_precip_24h_latest.json')
-      .then(response => { if (!response.ok) throw Error('Metadata unavailable'); return response.json(); })
-      .then(data => {
-        const fmt = value => new Date(value).toLocaleString('en-GB', { timeZone: 'UTC', dateStyle: 'medium', timeStyle: 'short' });
-        document.getElementById('period').textContent =
-          fmt(data.start_utc) + ' – ' + fmt(data.end_utc_exclusive) + ' UTC';
+    // All paths are relative to GitHub Pages; no GitHub commits are needed for images.
+    const baseURL = "precipitation/";
+    const regions = {
+      tropical: { file: "tropical_precip_24h_latest.webp", alt: "Global tropical precipitation accumulated over 24 hours" },
+      americas: { file: "americas_precip_24h_latest.webp", alt: "24-hour accumulated precipitation over the Americas" },
+      mexico: { file: "mexico_precip_24h_latest.webp", alt: "24-hour accumulated precipitation over Mexico" },
+      colombia: { file: "colombia_precip_24h_latest.webp", alt: "24-hour accumulated precipitation over Colombia" }
+    };
+    const selector = document.getElementById("precipitation-region");
+    const image = document.getElementById("precipitation-map");
+    const error = document.getElementById("map-error");
+    const period = document.getElementById("observation-period");
+    const imageLink = document.getElementById("image-link");
+
+    // New value on every page load to avoid stale map and metadata after deployment.
+    const cacheVersion = Date.now();
+    function updateMap() {
+      const region = regions[selector.value];
+      error.hidden = true;
+      image.alt = region.alt;
+      image.src = baseURL + region.file + "?v=" + cacheVersion;
+      imageLink.href = baseURL + region.file;
+    }
+    image.addEventListener("error", () => { error.hidden = false; });
+    image.addEventListener("load", () => { error.hidden = true; });
+    selector.addEventListener("change", updateMap);
+    updateMap();
+
+    fetch(baseURL + "tropical_precip_24h_latest.json?v=" + cacheVersion,
+          { cache: "no-store" })
+      .then(response => {
+        if (!response.ok) throw new Error("Metadata unavailable");
+        return response.json();
       })
-      .catch(() => { document.getElementById('period').textContent = 'See observation dates on the maps.'; });
+      .then(metadata => {
+        const start = new Date(metadata.start_utc);
+        const end = new Date(metadata.end_utc_exclusive);
+        if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+          throw new Error("Invalid observation times");
+        }
+        const format = new Intl.DateTimeFormat("en-GB", {
+          day: "2-digit", month: "short", year: "numeric",
+          hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "UTC"
+        });
+        period.textContent = "Observation period: " + format.format(start) +
+          " – " + format.format(end) + " UTC | NASA GPM IMERG Early Run " +
+          (metadata.file_version || "V07") + ".";
+      })
+      .catch(() => {
+        period.textContent = "Observation period: see the UTC timestamps printed on the map.";
+      });
   </script>
 </body>
 </html>
