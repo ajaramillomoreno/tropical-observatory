@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tropical Weather & Climate Observatory — IMERG</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, -apple-system, sans-serif; color: #192c3c; background: #f7f9fb; }
+    body { margin: 0; }
+    header { background: #143753; color: white; padding: 2.1rem max(4%, calc((100% - 1150px)/2)); }
+    header h1 { font-size: clamp(1.5rem, 3vw, 2.25rem); margin: 0 0 .5rem; }
+    header p { color: #d1e0eb; margin: 0; }
+    main { max-width: 1150px; margin: 2rem auto; padding: 0 4%; }
+    .intro { margin-bottom: 1.6rem; color: #465b69; }
+    .maps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 480px), 1fr)); gap: 1.5rem; }
+    figure { margin: 0; background: white; border: 1px solid #dce4ea; border-radius: 12px; overflow: hidden; }
+    img { display: block; width: 100%; height: auto; }
+    figcaption { padding: .85rem 1rem; font-weight: 650; }
+    footer { max-width: 1150px; margin: 2rem auto; padding: 0 4% 2rem; color: #5d6a76; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Tropical Weather &amp; Climate Observatory</h1>
+    <p>Observed precipitation · NASA GPM IMERG Early Run</p>
+  </header>
+  <main>
+    <p class="intro">Latest complete 24-hour precipitation accumulation. <span id="period">Loading observation period…</span></p>
+    <section class="maps">
+      <figure><img src="precipitation/tropical_precip_24h_latest.webp" alt="Global tropical precipitation" loading="eager"><figcaption>Global tropics</figcaption></figure>
+      <figure><img src="precipitation/americas_precip_24h_latest.webp" alt="Precipitation in the Americas" loading="lazy"><figcaption>Americas</figcaption></figure>
+      <figure><img src="precipitation/mexico_precip_24h_latest.webp" alt="Precipitation in Mexico" loading="lazy"><figcaption>Mexico</figcaption></figure>
+      <figure><img src="precipitation/colombia_precip_24h_latest.webp" alt="Precipitation in Colombia" loading="lazy"><figcaption>Colombia</figcaption></figure>
+    </section>
+  </main>
+  <footer>Source: NASA GPM IMERG Early Run · 24-hour accumulation · Images: lossless WebP</footer>
+  <script>
+    fetch('precipitation/tropical_precip_24h_latest.json')
+      .then(response => { if (!response.ok) throw Error('Metadata unavailable'); return response.json(); })
+      .then(data => {
+        const fmt = value => new Date(value).toLocaleString('en-GB', { timeZone: 'UTC', dateStyle: 'medium', timeStyle: 'short' });
+        document.getElementById('period').textContent =
+          fmt(data.start_utc) + ' – ' + fmt(data.end_utc_exclusive) + ' UTC';
+      })
+      .catch(() => { document.getElementById('period').textContent = 'See observation dates on the maps.'; });
+  </script>
+</body>
+</html>
