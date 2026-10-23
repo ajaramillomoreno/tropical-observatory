@@ -1,0 +1,193 @@
+
+# =============================================================================
+# Tropical Weather & Climate Observatory (TWCO)
+# Git Ignore Rules
+#
+# Keep source code, documentation, website files, and configuration.
+# Exclude generated meteorological data, figures, caches, and local files.
+# =============================================================================
+
+
+# =============================================================================
+# 1. GENERATED METEOROLOGICAL PRODUCTS
+# =============================================================================
+
+# Operational products: GFS, IMERG, synoptic analysis, etc.
+outputs/
+
+# Experimental figures, tests, and temporary scientific products
+sandbox/
+
+# Local input and intermediate data
+data/
+downloads/
+tmp/
+temp/
+
+
+# =============================================================================
+# 2. METEOROLOGICAL DATA FORMATS
+# =============================================================================
+
+# GRIB files
+*.grib
+*.grib2
+*.grb
+*.grb2
+
+# NetCDF files
+*.nc
+*.nc4
+*.cdf
+
+# HDF satellite products
+*.hdf
+*.hdf4
+*.hdf5
+*.h5
+*.HDF5
+
+# Other large scientific formats
+*.zarr/
+*.tif
+*.tiff
+
+
+# =============================================================================
+# 3. PYTHON
+# =============================================================================
+
+__pycache__/
+*.py[cod]
+*.pyo
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+build/
+dist/
+*.egg-info/
+
+
+# =============================================================================
+# 4. PYTHON ENVIRONMENTS
+# =============================================================================
+
+.venv/
+venv/
+env/
+ENV/
+.conda/
+conda-env/
+
+.python-version
+
+
+# =============================================================================
+# 5. NOTEBOOKS AND SCIENTIFIC COMPUTING
+# =============================================================================
+
+.ipynb_checkpoints/
+
+# Dask and distributed computing
+dask-worker-space/
+
+# Local processing caches
+.cache/
+cache/
+
+
+# =============================================================================
+# 6. OPERATING SYSTEM FILES
+# =============================================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+
+# Windows
+Thumbs.db
+desktop.ini
+
+
+# =============================================================================
+# 7. EDITORS AND IDEs
+# =============================================================================
+
+.vscode/
+.idea/
+
+*.swp
+*.swo
+*~
+
+
+# =============================================================================
+# 8. LOGS AND TEMPORARY FILES
+# =============================================================================
+
+*.log
+*.tmp
+*.temp
+*.bak
+*.old
+
+logs/
+
+
+# =============================================================================
+# 9. CREDENTIALS AND SECRETS
+# =============================================================================
+
+.env
+.env.*
+!.env.example
+
+*.pem
+*.key
+
+.netrc
+.urs_cookies
+
+
+# =============================================================================
+# 10. LOCAL ARCHIVES AND BACKUPS
+# =============================================================================
+
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+
+backup/
+backups/
+
+
+# =============================================================================
+# 11. IMPORTANT: FILES WE WANT TO KEEP
+# =============================================================================
+
+# Do not ignore:
+#   scripts/
+#   docs/
+#   assets/
+#   notebooks/
+#   .github/workflows/
+#   README.md
+#   LICENSE
+#   requirements.txt
+#   environment.yml
+#
+# Image assets inside docs/ or assets/ remain versioned.
+# Generated meteorological images inside outputs/ remain ignored.
+#
+# =============================================================================
