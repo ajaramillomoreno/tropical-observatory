@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Tropical Weather & Climate Observatory: tropical precipitation observations, GFS and ECMWF IFS forecasts, and scientific exploration.">
+  <meta name="description" content="Tropical Weather & Climate Observatory: satellite precipitation, tropical SST and OLR climate monitoring, and GFS/ECMWF forecasts.">
   <title>Tropical Weather &amp; Climate Observatory</title>
   <style>
     :root {
@@ -48,11 +48,13 @@
              border: 1px solid var(--border); border-left: 4px solid var(--blue); }
     .intro p { margin-bottom: 0; }
     .product { margin-bottom: 30px; background: white; border: 1px solid var(--border); }
+    .section-lead { margin: 0 0 22px; color: var(--muted); font-size: 14px; }
     .product-header { padding: 20px 26px; border-bottom: 1px solid var(--border); }
     .product-header h3 { margin: 0 0 7px; color: var(--navy); font-size: 23px; }
     .product-header p { margin: 0; color: var(--muted); font-size: 14px; }
     .product-body { padding: 22px; }
     .product-map { display: block; width: 100%; height: auto; background: #edf3f7; }
+    #climate-state, #forecast, #products { scroll-margin-top: 20px; }
     .map-selector { display: flex; align-items: center; flex-wrap: wrap;
                     gap: 12px; margin-bottom: 20px; }
     .map-selector label { font-size: 14px; font-weight: bold; color: var(--navy); }
@@ -108,15 +110,15 @@
   <nav aria-label="Main navigation">
     <div class="container">
       <a href="#home">HOME</a>
-      <a href="#products">OBSERVATIONAL PRODUCTS</a>
+      <a href="#products">OBSERVATIONS</a>
+      <a href="#climate-state">CLIMATE STATE</a>
       <a href="#forecast">FORECASTS</a>
       <a href="#about">ABOUT</a>
-      <a href="#resources">DATA &amp; RESOURCES</a>
     </div>
   </nav>
 
   <main class="container">
-    <div class="breadcrumb">Home / Observations and Forecasts</div>
+    <div class="breadcrumb">Home / Observations, Climate and Forecasts</div>
 
     <section class="intro">
       <h2 class="section-title">Welcome to the Tropical Weather &amp; Climate Observatory</h2>
@@ -163,21 +165,110 @@
             consecutive half-hourly observations. This product is intended for
             scientific exploration and is not a ground-based rain-gauge measurement.
           </p>
-          <p class="resource-link" id="resources">
+          <p class="resource-link">
             <a id="image-link" href="precipitation/tropical_precip_24h_latest.webp"
                target="_blank" rel="noopener noreferrer">Open selected map</a>
             <a href="precipitation/tropical_precip_24h_latest.json"
                target="_blank" rel="noopener noreferrer">Latest metadata (JSON)</a>
             <a href="https://doi.org/10.5067/GPM/IMERG/3B-HH-E/07"
                target="_blank" rel="noopener noreferrer">NASA IMERG data source</a>
-            <a href="https://github.com/ajaramillomoreno/tropical-observatory/blob/main/scripts/generate_tropical_precipitation.py"
-               target="_blank" rel="noopener noreferrer">Processing script</a>
           </p>
         </div>
       </article>
 
+    </section>
+
+    <section id="climate-state">
+      <h2 class="section-title">Tropical Climate State</h2>
+      <p class="section-lead">
+        Daily satellite-based fields showing the current tropical ocean and convective environment.
+        Select a region and choose either the observed value or its anomaly.
+        Each product displays the latest available observation date, which may differ between datasets.
+      </p>
+
+      <article class="product" id="sst">
+        <div class="product-header">
+          <h3>Sea Surface Temperature</h3>
+          <p>NOAA Coral Reef Watch CoralTemp v3.1 | Daily SST at ~5 km | Anomalies relative to 1991–2020</p>
+        </div>
+        <div class="product-body">
+          <div class="map-selector">
+            <label for="sst-region">Select region:</label>
+            <select id="sst-region" aria-controls="sst-map">
+              <option value="global_tropics">Global Tropics</option>
+              <option value="tropical_pacific">Tropical Pacific</option>
+            </select>
+            <label for="sst-field">Select field:</label>
+            <select id="sst-field" aria-controls="sst-map">
+              <option value="sst">SST</option>
+              <option value="sst_anomaly">SST Anomaly</option>
+            </select>
+          </div>
+          <img id="sst-map" class="product-map" alt="Daily sea surface temperature in the global tropics"
+               loading="lazy" decoding="async" hidden>
+          <p id="sst-error" class="product-note" role="status" hidden>
+            The selected SST map is unavailable. Please try another region or check back later.
+          </p>
+          <p id="sst-date" class="product-note" aria-live="polite">Loading SST metadata…</p>
+          <p class="product-note">
+            SST is the daily nighttime satellite estimate. SST anomalies measure departures from
+            the 1991–2020 daily climatology; they are not 30-day averages.
+          </p>
+          <p class="resource-link">
+            <a id="sst-image-link" href="climate_state/sst_global_tropics_latest.webp"
+               target="_blank" rel="noopener noreferrer">Open selected map</a>
+            <a href="climate_state/tropical_sst_latest.json" target="_blank"
+               rel="noopener noreferrer">Latest metadata (JSON)</a>
+            <a href="https://www.coralreefwatch.noaa.gov/product/5km/index_5km_ssta_clim19912020.php"
+               target="_blank" rel="noopener noreferrer">NOAA Coral Reef Watch data source</a>
+          </p>
+        </div>
+      </article>
+
+      <article class="product" id="olr">
+        <div class="product-header">
+          <h3>Outgoing Longwave Radiation</h3>
+          <p>NOAA CPC Blended OLR | Daily 1° fields | Anomalies relative to 1991–2020</p>
+        </div>
+        <div class="product-body">
+          <div class="map-selector">
+            <label for="olr-region">Select region:</label>
+            <select id="olr-region" aria-controls="olr-map">
+              <option value="global_tropics">Global Tropics</option>
+              <option value="tropical_pacific">Tropical Pacific</option>
+            </select>
+            <label for="olr-field">Select field:</label>
+            <select id="olr-field" aria-controls="olr-map">
+              <option value="olr">OLR</option>
+              <option value="olr_anomaly">OLR Anomaly</option>
+            </select>
+          </div>
+          <img id="olr-map" class="product-map" alt="Daily outgoing longwave radiation in the global tropics"
+               loading="lazy" decoding="async" hidden>
+          <p id="olr-error" class="product-note" role="status" hidden>
+            The selected OLR map is unavailable. Please try another region or check back later.
+          </p>
+          <p id="olr-date" class="product-note" aria-live="polite">Loading OLR metadata…</p>
+          <p class="product-note">
+            Lower OLR often indicates colder cloud tops and deep convection.
+            Negative OLR anomalies generally indicate enhanced convection relative to normal;
+            positive anomalies generally indicate suppressed convection.
+          </p>
+          <p class="resource-link">
+            <a id="olr-image-link" href="climate_state/olr_global_tropics_latest.webp"
+               target="_blank" rel="noopener noreferrer">Open selected map</a>
+            <a href="climate_state/tropical_olr_latest.json" target="_blank"
+               rel="noopener noreferrer">Latest metadata (JSON)</a>
+            <a href="https://ftp.cpc.ncep.noaa.gov/precip/CBO_V1/1deg-DLY/"
+               target="_blank" rel="noopener noreferrer">NOAA CPC data source</a>
+          </p>
+        </div>
+      </article>
+    </section>
+
+    <section id="forecast">
       <h2 class="section-title">Forecast Products</h2>
-      <article class="product" id="forecast">
+      <article class="product" id="forecast-precipitation">
         <div class="product-header">
           <h3 id="forecast-title">GFS Tropical Precipitation Forecast</h3>
           <p id="forecast-subtitle">NOAA/NCEP GFS 0.25° | Independent 6-hour precipitation accumulations | +0 to +48 hours</p>
@@ -225,8 +316,6 @@
                target="_blank" rel="noopener noreferrer">Latest forecast metadata (JSON)</a>
             <a id="forecast-source-link" href="https://nomads.ncep.noaa.gov/"
                target="_blank" rel="noopener noreferrer">Model data source</a>
-            <a id="forecast-script-link" href="https://github.com/ajaramillomoreno/tropical-observatory/blob/main/scripts/generate_gfs_tropical_forecast.py"
-               target="_blank" rel="noopener noreferrer">Processing script</a>
           </p>
         </div>
       </article>
@@ -316,6 +405,75 @@
       });
   </script>
   <script>
+    // Daily climate maps (SST and OLR). One viewer per product.
+    // Both scripts publish four WebP maps and a JSON manifest in climate_state/.
+    (() => {
+      const root = "climate_state/";
+      const products = [
+        { id: "sst", json: "tropical_sst_latest.json",
+          fields: { sst: "sst_image", sst_anomaly: "sst_anomaly_image" } },
+        { id: "olr", json: "tropical_olr_latest.json",
+          fields: { olr: "olr_image", olr_anomaly: "olr_anomaly_image" } }
+      ];
+
+      for (const config of products) {
+        const regionSelect = document.getElementById(config.id + "-region");
+        const fieldSelect = document.getElementById(config.id + "-field");
+        const map = document.getElementById(config.id + "-map");
+        const imageLink = document.getElementById(config.id + "-image-link");
+        const dateLabel = document.getElementById(config.id + "-date");
+        const error = document.getElementById(config.id + "-error");
+        let manifest = null;
+
+        function showMap() {
+          const region = regionSelect.value;
+          const field = fieldSelect.value;
+          const fileKey = config.fields[field];
+          const fileName = manifest?.regions?.[region]?.[fileKey]
+            || field + "_" + region + "_latest.webp";
+          const imagePath = root + fileName;
+
+          map.alt = fieldSelect.options[fieldSelect.selectedIndex].text + " — " +
+            regionSelect.options[regionSelect.selectedIndex].text;
+          map.hidden = false;
+          error.hidden = true;
+          map.src = imagePath + "?v=" + (manifest?.date || Date.now());
+          imageLink.href = imagePath;
+        }
+
+        map.addEventListener("error", () => { error.hidden = false; map.hidden = true; });
+        map.addEventListener("load", () => { error.hidden = true; map.hidden = false; });
+        regionSelect.addEventListener("change", showMap);
+        fieldSelect.addEventListener("change", showMap);
+
+        fetch(root + config.json + "?v=" + Date.now(), { cache: "no-store" })
+          .then(response => {
+            if (!response.ok) throw new Error("Climate metadata unavailable");
+            return response.json();
+          })
+          .then(data => {
+            if (!data.date || !data.regions) throw new Error("Invalid climate metadata");
+            manifest = data;
+            const observationDate = new Date(data.date + "T00:00:00Z");
+            const dateText = Number.isNaN(observationDate.getTime())
+              ? data.date
+              : new Intl.DateTimeFormat("en-GB", {
+                  day: "2-digit", month: "short", year: "numeric", timeZone: "UTC"
+                }).format(observationDate);
+            dateLabel.textContent = "Latest observation: " + dateText + " | " +
+              (config.id === "sst" ? "NOAA Coral Reef Watch, ~5 km" : "NOAA CPC Blended OLR, 1°") +
+              " | Anomaly climatology: 1991–2020.";
+            showMap();
+          })
+          .catch(problem => {
+            console.warn(config.id.toUpperCase() + " metadata unavailable:", problem);
+            dateLabel.textContent = "Observation date: see the date printed on the map.";
+            showMap(); // The images can still be served if the JSON is temporarily unavailable.
+          });
+      }
+    })();
+  </script>
+  <script>
     // One forecast viewer for GFS and ECMWF IFS.
     // Preload AND decode all eight images of the selected model/region before playback.
     (() => {
@@ -325,7 +483,7 @@
           source: "NOAA/NCEP GFS 0.25°", root: "forecast_tropical/",
           json: "gfs_tropical_precip_forecast_latest.json", cycleField: "gfs_cycle_utc",
           dataURL: "https://nomads.ncep.noaa.gov/",
-          scriptURL: "https://github.com/ajaramillomoreno/tropical-observatory/blob/main/scripts/generate_gfs_tropical_forecast.py",
+
           attribution: "Source: NOAA/NCEP GFS 0.25°."
         },
         ecmwf: {
@@ -333,7 +491,7 @@
           source: "ECMWF IFS Open Data 0.25°", root: "forecast_ecmwf/",
           json: "ecmwf_tropical_precip_forecast_latest.json", cycleField: "ecmwf_cycle_utc",
           dataURL: "https://data.ecmwf.int/forecasts/",
-          scriptURL: "https://github.com/ajaramillomoreno/tropical-observatory/blob/main/scripts/generate_ecmwf_tropical_forecast.py",
+
           attribution: "Source: ECMWF IFS Open Data 0.25° | License: CC BY 4.0."
         }
       };
@@ -355,7 +513,7 @@
       const imageLink = document.getElementById("forecast-image-link");
       const metadataLink = document.getElementById("forecast-metadata-link");
       const sourceLink = document.getElementById("forecast-source-link");
-      const scriptLink = document.getElementById("forecast-script-link");
+
       const sourceLabel = document.getElementById("forecast-source");
 
       let config = models.gfs;
@@ -491,7 +649,7 @@
         sourceLabel.textContent = config.attribution;
         metadataLink.href = config.root + config.json;
         sourceLink.href = config.dataURL;
-        scriptLink.href = config.scriptURL;
+
         cycleLabel.textContent = "Loading " + config.name + " forecast metadata…";
         loadingLabel.hidden = false;
         loadingLabel.textContent = "Preparing " + config.name + " forecast…";

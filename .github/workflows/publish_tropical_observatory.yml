@@ -1,5 +1,5 @@
 
-name: Publish Tropical Observatory (IMERG, GFS and ECMWF)
+name: Publish Tropical Observatory (IMERG, GFS, ECMWF, SST and OLR)
 
 on:
   workflow_dispatch:
@@ -32,13 +32,32 @@ jobs:
       - name: Install scientific dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install earthaccess h5py numpy matplotlib cartopy pillow requests eccodes ecmwf-opendata
+          python -m pip install earthaccess h5py numpy matplotlib cartopy pillow requests eccodes ecmwf-opendata xarray netCDF4
           python -m eccodes selfcheck
 
       - name: Prepare website files
         run: |
-          mkdir -p site/precipitation site/forecast_tropical site/forecast_ecmwf
+          mkdir -p site/precipitation site/forecast_tropical site/forecast_ecmwf site/climate_state
           cp -R docs/. site/
+
+      # Restore the latest SST and OLR products.
+      - name: Restore cached SST and OLR products
+        uses: actions/cache/restore@v4
+        with:
+          path: site/climate_state
+          key: twco-climate-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            twco-climate-${{ runner.os }}-
+
+      - name: Record previous climate metadata
+        id: climate_before
+        run: |
+          echo "sst=${{ hashFiles('site/climate_state/tropical_sst_latest.json') }}" >> "$GITHUB_OUTPUT"
+          echo "olr=${{ hashFiles('site/climate_state/tropical_olr_latest.json') }}" >> "$GITHUB_OUTPUT"
+
+      # ================================================================
+      # WEATHER PRODUCTS
+      # ================================================================
 
       - name: Generate latest IMERG observations
         env:
@@ -56,7 +75,35 @@ jobs:
         run: |
           python scripts/generate_ecmwf_tropical_forecast.py --output-dir site/forecast_ecmwf
 
-      - name: Verify that all images and metadata exist
+      # ================================================================
+      # CLIMATE PRODUCTS
+      # ================================================================
+
+      # Scripts skip generation if the cached date is up to date.
+      # If NOAA fails, the cached products may still be published.
+
+      - name: Generate daily SST products
+        id: sst
+        continue-on-error: true
+        run: |
+          python scripts/generate_tropical_sst_products.py --output-dir site/climate_state
+
+      - name: Generate daily OLR products
+        id: olr
+        continue-on-error: true
+        run: |
+          python scripts/generate_tropical_olr_products.py --output-dir site/climate_state
+
+      - name: Report climate download failures
+        if: steps.sst.outcome == 'failure' || steps.olr.outcome == 'failure'
+        run: |
+          echo "::warning::An SST or OLR update failed. Previously cached maps will be used only if verification succeeds."
+
+      # ================================================================
+      # VERIFY ALL PRODUCTS
+      # ================================================================
+
+      - name: Verify all images and metadata
         run: |
           python - <<'PYCODE'
           import json
@@ -64,36 +111,27 @@ jobs:
 
           site = Path('site')
 
-          # Verify IMERG observations
+          # IMERG: four regional maps.
           imerg = json.loads(
               (site / 'precipitation/tropical_precip_24h_latest.json').read_text()
           )
+
+          assert len(imerg['figures']) == 4, 'Expected 4 IMERG maps'
 
           for name in imerg['figures']:
               path = site / 'precipitation' / name
               assert path.is_file() and path.stat().st_size > 0, path
 
-          assert len(imerg['figures']) == 4, 'Expected 4 IMERG maps'
+          print('Verified: 4 IMERG maps')
 
-          # Verify GFS and ECMWF forecasts
+          # GFS and ECMWF: 32 frames per model.
           forecasts = [
-              (
-                  'GFS',
-                  'forecast_tropical',
-                  'gfs_tropical_precip_forecast_latest.json'
-              ),
-              (
-                  'ECMWF IFS',
-                  'forecast_ecmwf',
-                  'ecmwf_tropical_precip_forecast_latest.json'
-              )
+              ('GFS', 'forecast_tropical', 'gfs_tropical_precip_forecast_latest.json'),
+              ('ECMWF IFS', 'forecast_ecmwf', 'ecmwf_tropical_precip_forecast_latest.json'),
           ]
 
           for model, directory, filename in forecasts:
-              metadata = json.loads(
-                  (site / directory / filename).read_text()
-              )
-
+              metadata = json.loads((site / directory / filename).read_text())
               count = 0
 
               for region in metadata['regions']:
@@ -102,15 +140,50 @@ jobs:
                       assert path.is_file() and path.stat().st_size > 0, path
                       count += 1
 
-              assert count == 32, (
-                  f'Expected 32 {model} images; got {count}'
-              )
-
+              assert count == 32, f'Expected 32 {model} frames; got {count}'
               print(f'Verified: {count} {model} frames')
 
-          print(f"Verified: {len(imerg['figures'])} IMERG maps")
+          # SST and OLR: two regions x two variables.
+          climate = site / 'climate_state'
+
+          products = [
+              ('SST', 'tropical_sst_latest.json', ('sst', 'sst_anomaly')),
+              ('OLR', 'tropical_olr_latest.json', ('olr', 'olr_anomaly')),
+          ]
+
+          for product, filename, variables in products:
+              metadata = json.loads((climate / filename).read_text())
+              assert metadata.get('date'), f'Missing {product} observation date'
+
+              regions = metadata['regions']
+
+              for region in ('global_tropics', 'tropical_pacific'):
+                  assert region in regions, f'Missing {product} region: {region}'
+
+                  for variable in variables:
+                      name = regions[region][f'{variable}_image']
+                      path = climate / name
+                      assert path.is_file() and path.stat().st_size > 0, path
+
+              print(f'Verified: 4 {product} maps (valid {metadata["date"]})')
+
           print('All products verified successfully.')
           PYCODE
+
+      # ================================================================
+      # SAVE CLIMATE CACHE ONLY WHEN PRODUCTS CHANGE
+      # ================================================================
+
+      - name: Save updated climate cache
+        if: steps.climate_before.outputs.sst != hashFiles('site/climate_state/tropical_sst_latest.json') || steps.climate_before.outputs.olr != hashFiles('site/climate_state/tropical_olr_latest.json')
+        uses: actions/cache/save@v4
+        with:
+          path: site/climate_state
+          key: twco-climate-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+
+      # ================================================================
+      # PUBLISH WEBSITE
+      # ================================================================
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
