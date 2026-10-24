@@ -170,6 +170,8 @@
                target="_blank" rel="noopener noreferrer">Latest metadata (JSON)</a>
             <a href="https://doi.org/10.5067/GPM/IMERG/3B-HH-E/07"
                target="_blank" rel="noopener noreferrer">NASA IMERG data source</a>
+            <a href="https://github.com/ajaramillomoreno/tropical-observatory/blob/main/scripts/generate_tropical_precipitation.py"
+               target="_blank" rel="noopener noreferrer">Processing script</a>
           </p>
         </div>
       </article>
@@ -191,7 +193,7 @@
             </select>
           </div>
           <div class="forecast-controls">
-            <button id="gfs-play" type="button" aria-label="Play or pause forecast">Play</button>
+            <button id="gfs-play" type="button" aria-label="Play or pause forecast" disabled>Play</button>
             <button id="gfs-prev" type="button" aria-label="Previous forecast interval">Previous</button>
             <button id="gfs-next" type="button" aria-label="Next forecast interval">Next</button>
             <label for="gfs-slider">Forecast step:</label>
@@ -200,10 +202,11 @@
             <span id="gfs-step">+0 to +6 h</span>
           </div>
           <p id="gfs-cycle" class="product-note">Loading GFS forecast metadata…</p>
+          <p id="gfs-loading" class="product-note" role="status" aria-live="polite">Preparing forecast images…</p>
           <p id="gfs-valid" class="forecast-time" aria-live="polite"></p>
           <img id="gfs-map" class="product-map"
                alt="Six-hour GFS precipitation forecast for the global tropics"
-               decoding="async" loading="lazy">
+               decoding="async" loading="eager">
           <p id="gfs-error" class="product-note" role="status" hidden>
             The forecast map could not be loaded. Please try another interval or refresh the page.
           </p>
@@ -216,6 +219,8 @@
             <a id="gfs-image-link" href="#forecast" target="_blank" rel="noopener noreferrer">Open selected forecast map</a>
             <a href="forecast_tropical/gfs_tropical_precip_forecast_latest.json"
                target="_blank" rel="noopener noreferrer">Latest GFS metadata (JSON)</a>
+            <a href="https://github.com/ajaramillomoreno/tropical-observatory/blob/main/scripts/generate_gfs_tropical_forecast.py"
+               target="_blank" rel="noopener noreferrer">Processing script</a>
           </p>
         </div>
       </article>
@@ -305,12 +310,14 @@
       });
   </script>
   <script>
-    // Read the forecast manifest produced by the Python script. No hardcoded dates.
+    // Load and decode the eight images of ONE region before enabling playback.
+    // IMERG and GFS forecasts stay hosted in GitHub Pages, not Git history.
     (() => {
       const root = "forecast_tropical/";
       const region = document.getElementById("gfs-region");
       const map = document.getElementById("gfs-map");
       const error = document.getElementById("gfs-error");
+      const loadingLabel = document.getElementById("gfs-loading");
       const cycleLabel = document.getElementById("gfs-cycle");
       const validLabel = document.getElementById("gfs-valid");
       const stepLabel = document.getElementById("gfs-step");
@@ -319,14 +326,17 @@
       const previous = document.getElementById("gfs-prev");
       const next = document.getElementById("gfs-next");
       const imageLink = document.getElementById("gfs-image-link");
+
       let manifest = null;
+      let regionFrames = [];
+      let decodedImages = [];
       let frameIndex = 0;
       let timer = null;
-      let regionFrames = [];
-      let version = Date.now();
+      let loadToken = 0;
+
       const format = new Intl.DateTimeFormat("en-GB", {
-        day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit",
-        hourCycle:"h23", timeZone:"UTC"
+        day: "2-digit", month: "short", year: "numeric",
+        hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "UTC"
       });
 
       function pause() {
@@ -335,34 +345,86 @@
         playButton.textContent = "Play";
       }
 
+      function enableControls(ready) {
+        playButton.disabled = !ready;
+        previous.disabled = !ready;
+        next.disabled = !ready;
+        slider.disabled = !ready;
+      }
+
       function showFrame() {
         const frame = regionFrames[frameIndex];
-        if (!frame) return;
-        error.hidden = true;
+        const picture = decodedImages[frameIndex];
+        if (!frame || !picture) return;
         slider.value = String(frameIndex);
         stepLabel.textContent = "+" + frame.interval_start_hour + " to +" +
           frame.interval_end_hour + " h";
         validLabel.textContent = "Valid: " + format.format(new Date(frame.start_utc)) +
           " – " + format.format(new Date(frame.end_utc)) + " UTC";
-        const source = root + frame.image + "?v=" + version;
         map.alt = "GFS precipitation, " + region.options[region.selectedIndex].text +
           ", forecast hours " + frame.interval_start_hour + "–" + frame.interval_end_hour;
-        map.src = source;
+        // The image was downloaded AND decoded before this assignment.
+        map.src = picture.src;
         imageLink.href = root + frame.image;
+        error.hidden = true;
       }
 
-      function selectRegion() {
+      async function selectRegion() {
         if (!manifest) return;
+        pause();
+        enableControls(false);
+        const token = ++loadToken; // Ignore downloads from an older region selection.
         const selection = manifest.regions.find(item => item.key === region.value);
-        if (!selection) return;
+        if (!selection || !Array.isArray(selection.frames)) return;
         regionFrames = selection.frames;
-        frameIndex = Math.min(frameIndex, regionFrames.length - 1);
+        decodedImages = [];
+        frameIndex = 0;
         slider.max = String(regionFrames.length - 1);
-        showFrame();
+        error.hidden = true;
+        loadingLabel.hidden = false;
+        loadingLabel.textContent = "Preparing forecast images (0/" + regionFrames.length + ")…";
+
+        // Use the initialization time as a stable cache key. A new GFS cycle gets
+        // new URLs; revisiting the same cycle reuses the browser's image cache.
+        const cycleKey = encodeURIComponent(manifest.gfs_cycle_utc);
+        const candidates = regionFrames.map(frame => {
+          const picture = new Image();
+          picture.decoding = "async";
+          picture.src = root + frame.image + "?cycle=" + cycleKey;
+          return picture;
+        });
+
+        try {
+          // Show the first frame as soon as it is ready, while loading the rest.
+          await candidates[0].decode();
+          if (token !== loadToken) return;
+          decodedImages[0] = candidates[0];
+          showFrame();
+          let readyCount = 1;
+          loadingLabel.textContent = "Preparing forecast images (1/" + regionFrames.length + ")…";
+
+          await Promise.all(candidates.slice(1).map(async (picture, index) => {
+            await picture.decode();
+            if (token !== loadToken) return;
+            decodedImages[index + 1] = picture;
+            readyCount++;
+            loadingLabel.textContent = "Preparing forecast images (" + readyCount +
+              "/" + regionFrames.length + ")…";
+          }));
+          if (token !== loadToken) return;
+          loadingLabel.hidden = true;
+          enableControls(true);
+        } catch (problem) {
+          if (token !== loadToken) return;
+          console.error("GFS frame preload failed:", problem);
+          loadingLabel.textContent = "Some forecast images could not be prepared. Please refresh the page.";
+          error.hidden = false;
+          enableControls(false);
+        }
       }
 
       function advance(delta) {
-        if (!regionFrames.length) return;
+        if (!regionFrames.length || !decodedImages.length) return;
         frameIndex = (frameIndex + delta + regionFrames.length) % regionFrames.length;
         showFrame();
       }
@@ -376,7 +438,7 @@
       previous.addEventListener("click", () => { pause(); advance(-1); });
       next.addEventListener("click", () => { pause(); advance(1); });
       playButton.addEventListener("click", () => {
-        if (!manifest) return;
+        if (playButton.disabled || !manifest) return;
         if (timer !== null) { pause(); return; }
         playButton.textContent = "Pause";
         timer = window.setInterval(() => advance(1), 1100);
@@ -387,14 +449,16 @@
         if (document.hidden) pause();
       });
 
-      fetch(root + "gfs_tropical_precip_forecast_latest.json?v=" + version,
-            { cache:"no-store" })
+      enableControls(false);
+      fetch(root + "gfs_tropical_precip_forecast_latest.json?t=" + Date.now(),
+            { cache: "no-store" })
         .then(response => {
           if (!response.ok) throw new Error("GFS forecast metadata unavailable");
           return response.json();
         })
         .then(data => {
-          if (!Array.isArray(data.regions) || !data.regions.length) {
+          if (!Array.isArray(data.regions) || !data.regions.length ||
+              !data.gfs_cycle_utc) {
             throw new Error("Invalid forecast manifest");
           }
           manifest = data;
@@ -402,8 +466,10 @@
             format.format(new Date(manifest.gfs_cycle_utc)) + " UTC";
           selectRegion();
         })
-        .catch(() => {
+        .catch(problem => {
+          console.error("GFS metadata failed:", problem);
           cycleLabel.textContent = "GFS metadata unavailable. Please try again later.";
+          loadingLabel.hidden = true;
           error.hidden = false;
         });
     })();
