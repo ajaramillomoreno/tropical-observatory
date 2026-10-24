@@ -1,4 +1,5 @@
-name: Publish Tropical Observatory (IMERG and GFS)
+
+name: Publish Tropical Observatory (IMERG, GFS and ECMWF)
 
 on:
   workflow_dispatch:
@@ -18,6 +19,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 120
+
     steps:
       - name: Check out source code
         uses: actions/checkout@v4
@@ -30,12 +32,12 @@ jobs:
       - name: Install scientific dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install earthaccess h5py numpy matplotlib cartopy pillow requests eccodes
+          python -m pip install earthaccess h5py numpy matplotlib cartopy pillow requests eccodes ecmwf-opendata
           python -m eccodes selfcheck
 
       - name: Prepare website files
         run: |
-          mkdir -p site/precipitation site/forecast_tropical
+          mkdir -p site/precipitation site/forecast_tropical site/forecast_ecmwf
           cp -R docs/. site/
 
       - name: Generate latest IMERG observations
@@ -50,25 +52,64 @@ jobs:
         run: |
           python scripts/generate_gfs_tropical_forecast.py --output-dir site/forecast_tropical
 
+      - name: Generate latest ECMWF IFS tropical forecast
+        run: |
+          python scripts/generate_ecmwf_tropical_forecast.py --output-dir site/forecast_ecmwf
+
       - name: Verify that all images and metadata exist
         run: |
           python - <<'PYCODE'
           import json
           from pathlib import Path
+
           site = Path('site')
-          imerg = json.loads((site / 'precipitation/tropical_precip_24h_latest.json').read_text())
+
+          # Verify IMERG observations
+          imerg = json.loads(
+              (site / 'precipitation/tropical_precip_24h_latest.json').read_text()
+          )
+
           for name in imerg['figures']:
               path = site / 'precipitation' / name
               assert path.is_file() and path.stat().st_size > 0, path
-          gfs = json.loads((site / 'forecast_tropical/gfs_tropical_precip_forecast_latest.json').read_text())
-          count = 0
-          for region in gfs['regions']:
-              for frame in region['frames']:
-                  path = site / 'forecast_tropical' / frame['image']
-                  assert path.is_file() and path.stat().st_size > 0, path
-                  count += 1
-          assert count == 32, f'Expected 32 GFS images; got {count}'
-          print('Verified:', len(imerg['figures']), 'IMERG maps and', count, 'GFS frames')
+
+          assert len(imerg['figures']) == 4, 'Expected 4 IMERG maps'
+
+          # Verify GFS and ECMWF forecasts
+          forecasts = [
+              (
+                  'GFS',
+                  'forecast_tropical',
+                  'gfs_tropical_precip_forecast_latest.json'
+              ),
+              (
+                  'ECMWF IFS',
+                  'forecast_ecmwf',
+                  'ecmwf_tropical_precip_forecast_latest.json'
+              )
+          ]
+
+          for model, directory, filename in forecasts:
+              metadata = json.loads(
+                  (site / directory / filename).read_text()
+              )
+
+              count = 0
+
+              for region in metadata['regions']:
+                  for frame in region['frames']:
+                      path = site / directory / frame['image']
+                      assert path.is_file() and path.stat().st_size > 0, path
+                      count += 1
+
+              assert count == 32, (
+                  f'Expected 32 {model} images; got {count}'
+              )
+
+              print(f'Verified: {count} {model} frames')
+
+          print(f"Verified: {len(imerg['figures'])} IMERG maps")
+          print('All products verified successfully.')
           PYCODE
 
       - name: Configure GitHub Pages
@@ -86,6 +127,7 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
       - name: Publish website
         id: deployment
