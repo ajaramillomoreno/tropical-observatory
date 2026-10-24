@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Tropical Weather & Climate Observatory: tropical precipitation observations, GFS forecasts, and scientific exploration.">
+  <meta name="description" content="Tropical Weather & Climate Observatory: tropical precipitation observations, GFS and ECMWF IFS forecasts, and scientific exploration.">
   <title>Tropical Weather &amp; Climate Observatory</title>
   <style>
     :root {
@@ -109,7 +109,7 @@
     <div class="container">
       <a href="#home">HOME</a>
       <a href="#products">OBSERVATIONAL PRODUCTS</a>
-      <a href="#forecast">GFS FORECAST</a>
+      <a href="#forecast">FORECASTS</a>
       <a href="#about">ABOUT</a>
       <a href="#resources">DATA &amp; RESOURCES</a>
     </div>
@@ -179,13 +179,18 @@
       <h2 class="section-title">Forecast Products</h2>
       <article class="product" id="forecast">
         <div class="product-header">
-          <h3>GFS Tropical Precipitation Forecast</h3>
-          <p>NOAA/NCEP GFS 0.25° | Independent 6-hour precipitation accumulations | +0 to +48 hours</p>
+          <h3 id="forecast-title">GFS Tropical Precipitation Forecast</h3>
+          <p id="forecast-subtitle">NOAA/NCEP GFS 0.25° | Independent 6-hour precipitation accumulations | +0 to +48 hours</p>
         </div>
         <div class="product-body">
           <div class="map-selector">
-            <label for="gfs-region">Select region:</label>
-            <select id="gfs-region" aria-controls="gfs-map">
+            <label for="forecast-model">Forecast model:</label>
+            <select id="forecast-model" aria-controls="forecast-map">
+              <option value="gfs">GFS (NOAA/NCEP)</option>
+              <option value="ecmwf">ECMWF IFS</option>
+            </select>
+            <label for="forecast-region">Select region:</label>
+            <select id="forecast-region" aria-controls="forecast-map">
               <option value="global_tropics">Global Tropics</option>
               <option value="americas">Americas</option>
               <option value="mexico">Mexico</option>
@@ -193,33 +198,34 @@
             </select>
           </div>
           <div class="forecast-controls">
-            <button id="gfs-play" type="button" aria-label="Play or pause forecast" disabled>Play</button>
-            <button id="gfs-prev" type="button" aria-label="Previous forecast interval">Previous</button>
-            <button id="gfs-next" type="button" aria-label="Next forecast interval">Next</button>
-            <label for="gfs-slider">Forecast step:</label>
-            <input id="gfs-slider" type="range" min="0" max="7" value="0" step="1"
-                   aria-label="Forecast interval" aria-controls="gfs-map">
-            <span id="gfs-step">+0 to +6 h</span>
+            <button id="forecast-play" type="button" aria-label="Play or pause forecast" disabled>Play</button>
+            <button id="forecast-prev" type="button" aria-label="Previous forecast interval" disabled>Previous</button>
+            <button id="forecast-next" type="button" aria-label="Next forecast interval" disabled>Next</button>
+            <label for="forecast-slider">Forecast step:</label>
+            <input id="forecast-slider" type="range" min="0" max="7" value="0" step="1"
+                   aria-label="Forecast interval" aria-controls="forecast-map" disabled>
+            <span id="forecast-step">+0 to +6 h</span>
           </div>
-          <p id="gfs-cycle" class="product-note">Loading GFS forecast metadata…</p>
-          <p id="gfs-loading" class="product-note" role="status" aria-live="polite">Preparing forecast images…</p>
-          <p id="gfs-valid" class="forecast-time" aria-live="polite"></p>
-          <img id="gfs-map" class="product-map"
-               alt="Six-hour GFS precipitation forecast for the global tropics"
-               decoding="async" loading="eager">
-          <p id="gfs-error" class="product-note" role="status" hidden>
-            The forecast map could not be loaded. Please try another interval or refresh the page.
+          <p id="forecast-cycle" class="product-note">Loading forecast metadata…</p>
+          <p id="forecast-loading" class="product-note" role="status" aria-live="polite">Preparing forecast images…</p>
+          <p id="forecast-valid" class="forecast-time" aria-live="polite"></p>
+          <img id="forecast-map" class="product-map"
+               alt="Six-hour tropical precipitation forecast" decoding="async" loading="eager" hidden>
+          <p id="forecast-error" class="product-note" role="status" hidden>
+            The selected forecast is unavailable. Please try another model, region, or refresh the page.
           </p>
           <p class="product-note">
-            Each frame shows precipitation accumulated over its own six-hour period,
-            not the total accumulated since model initialization. GFS values are model forecasts,
-            not satellite observations.
+            Each frame shows precipitation accumulated during its own six-hour period,
+            not the total since model initialization. These are model forecasts, not observations.
           </p>
+          <p id="forecast-source" class="product-note">Source: NOAA/NCEP GFS 0.25°.</p>
           <p class="resource-link">
-            <a id="gfs-image-link" href="#forecast" target="_blank" rel="noopener noreferrer">Open selected forecast map</a>
-            <a href="forecast_tropical/gfs_tropical_precip_forecast_latest.json"
-               target="_blank" rel="noopener noreferrer">Latest GFS metadata (JSON)</a>
-            <a href="https://github.com/ajaramillomoreno/tropical-observatory/blob/main/scripts/generate_gfs_tropical_forecast.py"
+            <a id="forecast-image-link" href="#forecast" target="_blank" rel="noopener noreferrer" hidden>Open selected forecast map</a>
+            <a id="forecast-metadata-link" href="forecast_tropical/gfs_tropical_precip_forecast_latest.json"
+               target="_blank" rel="noopener noreferrer">Latest forecast metadata (JSON)</a>
+            <a id="forecast-source-link" href="https://nomads.ncep.noaa.gov/"
+               target="_blank" rel="noopener noreferrer">Model data source</a>
+            <a id="forecast-script-link" href="https://github.com/ajaramillomoreno/tropical-observatory/blob/main/scripts/generate_gfs_tropical_forecast.py"
                target="_blank" rel="noopener noreferrer">Processing script</a>
           </p>
         </div>
@@ -310,23 +316,49 @@
       });
   </script>
   <script>
-    // Load and decode the eight images of ONE region before enabling playback.
-    // IMERG and GFS forecasts stay hosted in GitHub Pages, not Git history.
+    // One forecast viewer for GFS and ECMWF IFS.
+    // Preload AND decode all eight images of the selected model/region before playback.
     (() => {
-      const root = "forecast_tropical/";
-      const region = document.getElementById("gfs-region");
-      const map = document.getElementById("gfs-map");
-      const error = document.getElementById("gfs-error");
-      const loadingLabel = document.getElementById("gfs-loading");
-      const cycleLabel = document.getElementById("gfs-cycle");
-      const validLabel = document.getElementById("gfs-valid");
-      const stepLabel = document.getElementById("gfs-step");
-      const slider = document.getElementById("gfs-slider");
-      const playButton = document.getElementById("gfs-play");
-      const previous = document.getElementById("gfs-prev");
-      const next = document.getElementById("gfs-next");
-      const imageLink = document.getElementById("gfs-image-link");
+      const models = {
+        gfs: {
+          name: "GFS", title: "GFS Tropical Precipitation Forecast",
+          source: "NOAA/NCEP GFS 0.25°", root: "forecast_tropical/",
+          json: "gfs_tropical_precip_forecast_latest.json", cycleField: "gfs_cycle_utc",
+          dataURL: "https://nomads.ncep.noaa.gov/",
+          scriptURL: "https://github.com/ajaramillomoreno/tropical-observatory/blob/main/scripts/generate_gfs_tropical_forecast.py",
+          attribution: "Source: NOAA/NCEP GFS 0.25°."
+        },
+        ecmwf: {
+          name: "ECMWF IFS", title: "ECMWF IFS Tropical Precipitation Forecast",
+          source: "ECMWF IFS Open Data 0.25°", root: "forecast_ecmwf/",
+          json: "ecmwf_tropical_precip_forecast_latest.json", cycleField: "ecmwf_cycle_utc",
+          dataURL: "https://data.ecmwf.int/forecasts/",
+          scriptURL: "https://github.com/ajaramillomoreno/tropical-observatory/blob/main/scripts/generate_ecmwf_tropical_forecast.py",
+          attribution: "Source: ECMWF IFS Open Data 0.25° | License: CC BY 4.0."
+        }
+      };
 
+      const modelSelector = document.getElementById("forecast-model");
+      const regionSelector = document.getElementById("forecast-region");
+      const map = document.getElementById("forecast-map");
+      const title = document.getElementById("forecast-title");
+      const subtitle = document.getElementById("forecast-subtitle");
+      const error = document.getElementById("forecast-error");
+      const loadingLabel = document.getElementById("forecast-loading");
+      const cycleLabel = document.getElementById("forecast-cycle");
+      const validLabel = document.getElementById("forecast-valid");
+      const stepLabel = document.getElementById("forecast-step");
+      const slider = document.getElementById("forecast-slider");
+      const playButton = document.getElementById("forecast-play");
+      const previous = document.getElementById("forecast-prev");
+      const next = document.getElementById("forecast-next");
+      const imageLink = document.getElementById("forecast-image-link");
+      const metadataLink = document.getElementById("forecast-metadata-link");
+      const sourceLink = document.getElementById("forecast-source-link");
+      const scriptLink = document.getElementById("forecast-script-link");
+      const sourceLabel = document.getElementById("forecast-source");
+
+      let config = models.gfs;
       let manifest = null;
       let regionFrames = [];
       let decodedImages = [];
@@ -361,52 +393,64 @@
           frame.interval_end_hour + " h";
         validLabel.textContent = "Valid: " + format.format(new Date(frame.start_utc)) +
           " – " + format.format(new Date(frame.end_utc)) + " UTC";
-        map.alt = "GFS precipitation, " + region.options[region.selectedIndex].text +
+        map.alt = config.name + " precipitation, " +
+          regionSelector.options[regionSelector.selectedIndex].text +
           ", forecast hours " + frame.interval_start_hour + "–" + frame.interval_end_hour;
-        // The image was downloaded AND decoded before this assignment.
+        // Every displayed image is already decoded, preventing animation stutter.
         map.src = picture.src;
-        imageLink.href = root + frame.image;
+        map.hidden = false;
+        imageLink.href = config.root + frame.image;
+        imageLink.hidden = false;
         error.hidden = true;
       }
 
-      async function selectRegion() {
+      async function loadRegion(resetStep = false) {
         if (!manifest) return;
         pause();
         enableControls(false);
-        const token = ++loadToken; // Ignore downloads from an older region selection.
-        const selection = manifest.regions.find(item => item.key === region.value);
-        if (!selection || !Array.isArray(selection.frames)) return;
+        const token = ++loadToken; // Ignore downloads for a previous model/region.
+        const selection = manifest.regions.find(item => item.key === regionSelector.value);
+        if (!selection || !Array.isArray(selection.frames) || !selection.frames.length) {
+          loadingLabel.hidden = true;
+          error.hidden = false;
+          return;
+        }
+
         regionFrames = selection.frames;
         decodedImages = [];
-        frameIndex = 0;
+        if (resetStep) frameIndex = 0;
+        frameIndex = Math.min(frameIndex, regionFrames.length - 1);
         slider.max = String(regionFrames.length - 1);
+        slider.value = String(frameIndex);
+        map.hidden = true;
+        imageLink.hidden = true;
+        validLabel.textContent = "";
         error.hidden = true;
         loadingLabel.hidden = false;
         loadingLabel.textContent = "Preparing forecast images (0/" + regionFrames.length + ")…";
 
-        // Use the initialization time as a stable cache key. A new GFS cycle gets
-        // new URLs; revisiting the same cycle reuses the browser's image cache.
-        const cycleKey = encodeURIComponent(manifest.gfs_cycle_utc);
+        const cycleKey = encodeURIComponent(manifest[config.cycleField]);
         const candidates = regionFrames.map(frame => {
           const picture = new Image();
           picture.decoding = "async";
-          picture.src = root + frame.image + "?cycle=" + cycleKey;
+          picture.src = config.root + frame.image + "?cycle=" + cycleKey;
           return picture;
         });
 
         try {
-          // Show the first frame as soon as it is ready, while loading the rest.
-          await candidates[0].decode();
+          // Display the requested forecast step as soon as its image is decoded.
+          await candidates[frameIndex].decode();
           if (token !== loadToken) return;
-          decodedImages[0] = candidates[0];
+          decodedImages[frameIndex] = candidates[frameIndex];
           showFrame();
           let readyCount = 1;
           loadingLabel.textContent = "Preparing forecast images (1/" + regionFrames.length + ")…";
 
-          await Promise.all(candidates.slice(1).map(async (picture, index) => {
+          await Promise.all(candidates.map(async (picture, index) => {
+            if (index === frameIndex) return;
             await picture.decode();
             if (token !== loadToken) return;
-            decodedImages[index + 1] = picture;
+            decodedImages[index] = picture;
             readyCount++;
             loadingLabel.textContent = "Preparing forecast images (" + readyCount +
               "/" + regionFrames.length + ")…";
@@ -416,20 +460,69 @@
           enableControls(true);
         } catch (problem) {
           if (token !== loadToken) return;
-          console.error("GFS frame preload failed:", problem);
-          loadingLabel.textContent = "Some forecast images could not be prepared. Please refresh the page.";
+          console.error(config.name + " frame preload failed:", problem);
+          loadingLabel.textContent = "Some forecast images could not be prepared. Please try another model or refresh.";
           error.hidden = false;
           enableControls(false);
         }
       }
 
       function advance(delta) {
-        if (!regionFrames.length || !decodedImages.length) return;
+        if (!regionFrames.length || decodedImages.length !== regionFrames.length) return;
         frameIndex = (frameIndex + delta + regionFrames.length) % regionFrames.length;
         showFrame();
       }
 
-      region.addEventListener("change", selectRegion);
+      async function selectModel() {
+        pause();
+        enableControls(false);
+        const token = ++loadToken;
+        config = models[modelSelector.value];
+        manifest = null;
+        regionFrames = [];
+        decodedImages = [];
+        map.hidden = true;
+        imageLink.hidden = true;
+        error.hidden = true;
+        validLabel.textContent = "";
+        title.textContent = config.title;
+        subtitle.textContent = config.source +
+          " | Independent 6-hour precipitation accumulations | +0 to +48 hours";
+        sourceLabel.textContent = config.attribution;
+        metadataLink.href = config.root + config.json;
+        sourceLink.href = config.dataURL;
+        scriptLink.href = config.scriptURL;
+        cycleLabel.textContent = "Loading " + config.name + " forecast metadata…";
+        loadingLabel.hidden = false;
+        loadingLabel.textContent = "Preparing " + config.name + " forecast…";
+
+        try {
+          const response = await fetch(config.root + config.json + "?t=" + Date.now(),
+                                       { cache: "no-store" });
+          if (!response.ok) throw new Error(config.name + " forecast metadata unavailable");
+          const data = await response.json();
+          if (token !== loadToken) return;
+          const cycle = data[config.cycleField];
+          if (!Array.isArray(data.regions) || !data.regions.length ||
+              !cycle || Number.isNaN(new Date(cycle).getTime())) {
+            throw new Error("Invalid " + config.name + " forecast manifest");
+          }
+          manifest = data;
+          cycleLabel.textContent = config.name + " initialized: " +
+            format.format(new Date(cycle)) + " UTC";
+          // Preserve region and lead time when comparing GFS with ECMWF.
+          await loadRegion();
+        } catch (problem) {
+          if (token !== loadToken) return;
+          console.error(config.name + " metadata failed:", problem);
+          cycleLabel.textContent = config.name + " metadata unavailable. Please try again later.";
+          loadingLabel.hidden = true;
+          error.hidden = false;
+        }
+      }
+
+      modelSelector.addEventListener("change", selectModel);
+      regionSelector.addEventListener("change", () => loadRegion(true));
       slider.addEventListener("input", () => {
         pause();
         frameIndex = Number(slider.value);
@@ -450,28 +543,7 @@
       });
 
       enableControls(false);
-      fetch(root + "gfs_tropical_precip_forecast_latest.json?t=" + Date.now(),
-            { cache: "no-store" })
-        .then(response => {
-          if (!response.ok) throw new Error("GFS forecast metadata unavailable");
-          return response.json();
-        })
-        .then(data => {
-          if (!Array.isArray(data.regions) || !data.regions.length ||
-              !data.gfs_cycle_utc) {
-            throw new Error("Invalid forecast manifest");
-          }
-          manifest = data;
-          cycleLabel.textContent = "GFS initialized: " +
-            format.format(new Date(manifest.gfs_cycle_utc)) + " UTC";
-          selectRegion();
-        })
-        .catch(problem => {
-          console.error("GFS metadata failed:", problem);
-          cycleLabel.textContent = "GFS metadata unavailable. Please try again later.";
-          loadingLabel.hidden = true;
-          error.hidden = false;
-        });
+      selectModel();
     })();
   </script>
 </body>
